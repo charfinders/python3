@@ -1,0 +1,56 @@
+swagger: '2.0'
+info:
+  title: Charfinder API
+  description: Find Unicode characters
+  version: 1.0.0
+host: localhost
+schemes:
+  - http
+basePath: /v1
+produces:
+  - application/json
+paths:
+  /find_chars:
+    get:
+      summary: Find Unicode characters whose description contains words in the search string
+      description: |
+        Find Unicode characters whose description contains words in the search 
+        string
+      parameters:
+        - name: q
+          in: query
+          description: String for search.
+          required: true
+          type: string
+      responses:
+        '200':
+          description: An array of characters and their descriptions
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Character'
+        default:
+          description: Error
+          schema:
+            $ref: '#/definitions/Error'
+definitions:
+  Character:
+    type: object
+    properties:
+      code_point: 
+        type: string
+        description: Unicode code point
+      name:
+        type: string
+        description: Canonical name of the character
+      character:
+        type: string
+        description: THE character
+  Error:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
