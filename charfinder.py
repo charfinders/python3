@@ -21,24 +21,25 @@ def get_ucd_lines():
     return text.strip().split('\n')
 
 
-def search(lines, words):
-    words = {word.upper() for word in words}
+def scan(lines, words):
     if not words:
         return
+    words = {word.upper() for word in words}
     for line in lines:
         codepoint, name, *rest = line.split(';')
         if name.startswith('<'):
             continue
         name_set = set(name.replace('-', ' ').split())
         if words <= name_set:
-            print(chr(int(codepoint, 16)), name)
+            yield chr(int(codepoint, 16)), name
 
 
 if __name__ == '__main__':
-    
+
     import sys
 
     if len(sys.argv) > 1:
-        search(get_ucd_lines(), sys.argv[1:])
+        for char, name in scan(get_ucd_lines(), sys.argv[1:]):
+            print(char, name)
     else:
         print('usage: {} <word1> <word2> ...'.format(sys.argv[0]))
