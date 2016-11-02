@@ -35,9 +35,10 @@ def search(lines, words):
 
 
 if __name__ == '__main__':
+    
     import sys
-    if len(sys.argv) < 2:
-        print('usage: {} <word1> <word2> ...'.format(sys.argv[0]))
-        sys.exit(1)
 
-    search(get_ucd_lines(), sys.argv[1:])
+    if len(sys.argv) > 1:
+        search(get_ucd_lines(), sys.argv[1:])
+    else:
+        print('usage: {} <word1> <word2> ...'.format(sys.argv[0]))
