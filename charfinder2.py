@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 
 """
-charfinder.py:
+charfinder2.py:
     Searches for Unicode characters named with the words given.
-    Downloads and scans UCD (Unicode Character Database).
+    Builds inverted index of UCD (Unicode Character Database).
 """
 
 import pathlib
 from urllib import request
+import collections
+import functools
+import operator
+import pickle
 
 UCD_URL = 'http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt'
 UCD_NAME = pathlib.Path(UCD_URL).name
+INDEX_NAME = 'charfinder_index.pickle'
 
 
 def download_ucd():
@@ -57,16 +62,38 @@ def parse(ucd_line):
     return chr(int(codepoint, 16)), name, name_set
 
 
-def scan(lines, words):
-    if not words:
-        return
-    words = {word.upper() for word in words}
+def build_index():
+    lines = read_ucd()
+    word_idx = collections.defaultdict(set)
+    char_idx = {}
     for line in lines:
         char, name, name_set = parse(line)
         if name.startswith('<'):
             continue
-        if words <= name_set:
-            yield char, name
+        for word in name_set:
+            word_idx[word].add(char)
+        char_idx[char] = name
+    with open(INDEX_NAME, 'wb') as fp:
+        pickle.dump((word_idx, char_idx), fp)
+    return word_idx, char_idx
+
+
+def read_index():
+    if pathlib.Path(INDEX_NAME).exists():
+        with open(INDEX_NAME, 'rb') as fp:
+            word_idx, char_idx = pickle.load(fp)
+    else:
+        word_idx, char_idx = build_index()
+    return word_idx, char_idx
+
+
+def search(word_idx, char_idx, words):
+    if not words:
+        return
+    words = (word.upper() for word in words)
+    found = functools.reduce(operator.and_, (word_idx[word] for word in words))
+    for char in sorted(found):
+        yield char, char_idx[char]
 
 
 def main():
@@ -76,7 +103,7 @@ def main():
         print('usage: {} <word1> <word2> ...'.format(sys.argv[0]))
         sys.exit()
 
-    for char, name in scan(read_ucd(), sys.argv[1:]):
+    for char, name in search(*read_index(), sys.argv[1:]):
         print(char, name)
 
 
