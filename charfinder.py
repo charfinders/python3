@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+"""
+charfinder.py:
+    Downloads and scans UCD (Unicode Character Database)
+    searching for character named with the words given.
+"""
+
 import pathlib
 from urllib import request
 
@@ -26,11 +32,28 @@ def read_ucd():
     return text.strip().split('\n')
 
 
-def parse(line):
-    codepoint, name, *rest = line.split(';')
-    if name.startswith('<'):
-        return '', '', set()
+def parse(ucd_line):
+    """
+        >>> line = '002E;FULL STOP;Po;0;CS;;;;;N;PERIOD;;;;'
+        >>> char, name, name_set = parse(line)
+        >>> char, name
+        ('.', 'FULL STOP')
+        >>> sorted(name_set)
+        ['FULL', 'PERIOD', 'STOP']
+        >>> line = '005F;LOW LINE;Pc;0;ON;;;;;N;SPACING UNDERSCORE;;;;'
+        >>> char, name, name_set = parse(line)
+        >>> char, name
+        ('_', 'LOW LINE')
+        >>> sorted(name_set)
+        ['LINE', 'LOW', 'SPACING', 'UNDERSCORE']
+
+    """
+    codepoint, name, *rest = ucd_line.split(';')
     name_set = set(name.replace('-', ' ').split())
+    old_name = rest[8]
+    if old_name:
+        name_set |= set(old_name.replace('-', ' ').split())
+        name += ' (old: {})'.format(old_name)
     return chr(int(codepoint, 16)), name, name_set
 
 
@@ -40,7 +63,9 @@ def scan(lines, words):
     words = {word.upper() for word in words}
     for line in lines:
         char, name, name_set = parse(line)
-        if char and words <= name_set:
+        if name.startswith('<'):
+            continue
+        if words <= name_set:
             yield char, name
 
 
