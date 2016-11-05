@@ -14,27 +14,30 @@ UCD_URL = 'http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt'
 UCD_NAME = pathlib.Path(UCD_URL).name
 
 
+def words_set(word_string):
+    return set(word_string.upper().replace('-', ' ').split())
+
+
 def parse(ucd_line):
     parts = ucd_line.split(';')
     char = chr(int(parts[0], 16))
     name = parts[1]
     if parts[10]:
         old_name = parts[10]
-        old_name_set = set(old_name.replace('-', ' ').split())
-        name_set = set(name.replace('-', ' ').split())
+        old_name_set = words_set(old_name)
+        name_set = words_set(name)
         if old_name_set - name_set:
             name += ' | ' + old_name
     return char, name
 
 
 def match(query_set, name):
-    name = set(name.replace('-', ' ').split())
+    name = words_set(name)
     return query_set <= name
 
 
 def scan(lines, query):
-    query = query.upper().replace('-', ' ')
-    query_set = set(query.split())
+    query_set = words_set(query)
     if not query_set:
         return
     for line in lines:
