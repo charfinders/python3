@@ -34,32 +34,22 @@ def read_ucd():
     else:
         text = download_ucd()
 
-    return text.strip().split('\n')
+    return (line for line in text.split('\n') 
+                 if line.strip() and not line.startswith('#'))
 
 
 def parse(ucd_line):
-    """
-        >>> line = '002E;FULL STOP;Po;0;CS;;;;;N;PERIOD;;;;'
-        >>> char, name, name_set = parse(line)
-        >>> char, name
-        ('.', 'FULL STOP (old name: PERIOD)')
-        >>> sorted(name_set)
-        ['FULL', 'PERIOD', 'STOP']
-        >>> line = '005F;LOW LINE;Pc;0;ON;;;;;N;SPACING UNDERSCORE;;;;'
-        >>> char, name, name_set = parse(line)
-        >>> char, name
-        ('_', 'LOW LINE (old name: SPACING UNDERSCORE)')
-        >>> sorted(name_set)
-        ['LINE', 'LOW', 'SPACING', 'UNDERSCORE']
-
-    """
-    codepoint, name, *rest = ucd_line.split(';')
+    parts = ucd_line.split(';')
+    char = chr(int(parts[0], 16))
+    name = parts[1]
     name_set = set(name.replace('-', ' ').split())
-    old_name = rest[8]
-    if old_name:
-        name_set |= set(old_name.replace('-', ' ').split())
-        name += ' (old name: {})'.format(old_name)
-    return chr(int(codepoint, 16)), name, name_set
+    if parts[10]:
+        old_name = parts[10]
+        old_name_set = set(old_name.replace('-', ' ').split())
+        if old_name_set - name_set:
+            name += ' | ' + old_name
+            name_set |= old_name_set
+    return char, name, name_set
 
 
 def build_index():

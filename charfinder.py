@@ -6,6 +6,7 @@ charfinder.py:
     Downloads and scans UCD (Unicode Character Database).
 """
 
+
 import pathlib
 from urllib import request
 
@@ -13,13 +14,42 @@ UCD_URL = 'http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt'
 UCD_NAME = pathlib.Path(UCD_URL).name
 
 
+def parse(ucd_line):
+    parts = ucd_line.split(';')
+    char = chr(int(parts[0], 16))
+    name = parts[1]
+    if parts[10]:
+        old_name = parts[10]
+        old_name_set = set(old_name.replace('-', ' ').split())
+        name_set = set(name.replace('-', ' ').split())
+        if old_name_set - name_set:
+            name += ' | ' + old_name
+    return char, name
+
+
+def match(query_set, name):
+    name = set(name.replace('-', ' ').split())
+    return query_set <= name
+
+
+def scan(lines, query):
+    query = query.upper().replace('-', ' ')
+    query_set = set(query.split())
+    if not query_set:
+        return
+    for line in lines:
+        char, name = parse(line)
+        if match(query_set, name):    
+            yield char, name
+
+
 def download_ucd():
     print('downloading {}...'.format(UCD_NAME))
     with request.urlopen(UCD_URL) as fp_in:
-        text = fp_in.read().decode('ascii')
-    with open(UCD_NAME, 'wt', encoding='ascii') as fp_out:
-        fp_out.write(text)
-    return text
+        octets = fp_in.read()
+    with open(UCD_NAME, 'wb') as fp_out:
+        fp_out.write(octets)
+    return octets.decode('ascii')
 
 
 def read_ucd():
@@ -29,45 +59,8 @@ def read_ucd():
     else:
         text = download_ucd()
 
-    return text.strip().split('\n')
-
-
-def parse(ucd_line):
-    """
-        >>> line = '002E;FULL STOP;Po;0;CS;;;;;N;PERIOD;;;;'
-        >>> char, name, name_set = parse(line)
-        >>> char, name
-        ('.', 'FULL STOP (old name: PERIOD)')
-        >>> sorted(name_set)
-        ['FULL', 'PERIOD', 'STOP']
-        >>> line = '005F;LOW LINE;Pc;0;ON;;;;;N;SPACING UNDERSCORE;;;;'
-        >>> char, name, name_set = parse(line)
-        >>> char, name
-        ('_', 'LOW LINE (old name: SPACING UNDERSCORE)')
-        >>> sorted(name_set)
-        ['LINE', 'LOW', 'SPACING', 'UNDERSCORE']
-
-    """
-    codepoint, name, *rest = ucd_line.split(';')
-    name_set = set(name.replace('-', ' ').split())
-    old_name = rest[8]
-    if old_name:
-        name_set |= set(old_name.replace('-', ' ').split())
-        name += ' (old name: {})'.format(old_name)
-    return chr(int(codepoint, 16)), name, name_set
-
-
-def scan(lines, words):
-    if not words:
-        return
-    words = {word.upper() for word in words}
-    for line in lines:
-        char, name, name_set = parse(line)
-        if name.startswith('<'):
-            continue
-        if words <= name_set:
-            yield char, name
-
+    return (line for line in text.split('\n') 
+                 if line.strip() and not line.startswith('#'))
 
 def main():
     import sys
@@ -76,7 +69,7 @@ def main():
         print('usage: {} <word1> <word2> ...'.format(sys.argv[0]))
         sys.exit()
 
-    for char, name in scan(read_ucd(), sys.argv[1:]):
+    for char, name in scan(read_ucd(), ' '.join(sys.argv[1:])):
         print(char, name)
 
 
